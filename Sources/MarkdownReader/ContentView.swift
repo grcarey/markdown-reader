@@ -9,6 +9,12 @@ struct ContentView: View {
             PreviewView(markdown: $model.markdown, fontSize: $model.fontSize)
         }
         .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Button(action: { model.goBack() }) { Label("Back", systemImage: "chevron.left") }
+                    .help(model.history.last.map { "Back to \($0.lastPathComponent)" } ?? "Back")
+                    .keyboardShortcut("[")
+                    .disabled(model.history.isEmpty)
+            }
             ToolbarItemGroup(placement: .automatic) {
                 Text("Font")
                 Slider(value: $model.fontSize, in: 10...30)

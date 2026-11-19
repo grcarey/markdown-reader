@@ -35,7 +35,7 @@ struct MarkdownWebView: NSViewRepresentable {
             guard let href = message.body as? String,
                   let url = URL(string: href, relativeTo: model?.currentFileURL)?.absoluteURL else { return }
             if url.isFileURL, ["md", "markdown"].contains(url.pathExtension.lowercased()) {
-                model?.load(url: url)
+                model?.follow(url: url)
             } else {
                 NSWorkspace.shared.open(url)
             }

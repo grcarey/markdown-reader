@@ -9,6 +9,7 @@ final class AppModel: ObservableObject {
     private var savedText = welcome
     @Published var currentFileURL: URL?
     @Published var fontSize: Double = 14
+    @Published var history: [URL] = []
 
     // Open a markdown file using NSOpenPanel
     func openFile() {
@@ -24,23 +25,35 @@ final class AppModel: ObservableObject {
         panel.canChooseDirectories = false
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
-            self.load(url: url)
+            // Opening a file directly starts a new link chain.
+            if self.load(url: url) { self.history.removeAll() }
         }
     }
 
-    func load(url: URL) {
-        guard confirmDiscard() else { return }
+    // Follow a link from the current file, remembering where we came from.
+    func follow(url: URL) {
+        let from = currentFileURL
+        if load(url: url), let from { history.append(from) }
+    }
+
+    func goBack() {
+        guard let previous = history.last, load(url: previous) else { return }
+        history.removeLast()
+    }
+
+    @discardableResult
+    func load(url: URL) -> Bool {
+        guard confirmDiscard() else { return false }
         do {
             let data = try Data(contentsOf: url)
-            if let s = String(data: data, encoding: .utf8) {
-                DispatchQueue.main.async {
-                    self.markdown = s
-                    self.savedText = s
-                    self.currentFileURL = url
-                }
-            }
+            guard let s = String(data: data, encoding: .utf8) else { return false }
+            markdown = s
+            savedText = s
+            currentFileURL = url
+            return true
         } catch {
             self.showError(error)
+            return false
         }
     }
 
