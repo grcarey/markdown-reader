@@ -10,8 +10,6 @@ struct ContentView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .automatic) {
-                Button(action: { model.exportHTML() }) { Label("Export HTML", systemImage: "doc.richtext") }
-                Divider()
                 Text("Font")
                 Slider(value: $model.fontSize, in: 10...30)
                     .frame(width: 140)
