@@ -7,7 +7,6 @@ final class AppModel: ObservableObject {
     @Published var markdown: String = "# Welcome to Markdown Reader\n\nOpen a file or start typing..."
     @Published var currentFileURL: URL?
     @Published var fontSize: Double = 14
-    @Published var recentFiles: [URL] = []
 
     // Open a markdown file using NSOpenPanel
     func openFile() {
@@ -34,7 +33,6 @@ final class AppModel: ObservableObject {
                 DispatchQueue.main.async {
                     self.markdown = s
                     self.currentFileURL = url
-                    self.addRecent(url: url)
                 }
             }
         } catch {
@@ -64,7 +62,6 @@ final class AppModel: ObservableObject {
             guard response == .OK, let url = panel.url else { return }
             self.currentFileURL = url
             self.write(url: url)
-            self.addRecent(url: url)
         }
     }
 
@@ -102,14 +99,6 @@ final class AppModel: ObservableObject {
         } catch {
             self.showError(error)
         }
-    }
-
-    private func addRecent(url: URL) {
-        if let idx = recentFiles.firstIndex(of: url) {
-            recentFiles.remove(at: idx)
-        }
-        recentFiles.insert(url, at: 0)
-        if recentFiles.count > 20 { recentFiles.removeLast() }
     }
 
     private func showError(_ error: Error) {

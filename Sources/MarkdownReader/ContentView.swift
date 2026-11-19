@@ -2,17 +2,11 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var model: AppModel
-    @State private var sidebarWidth: CGFloat = 220
 
     var body: some View {
         HSplitView {
-            sidebar
-                .frame(minWidth: 180, idealWidth: sidebarWidth, maxWidth: 320)
-
-            HSplitView {
-                EditorView(text: $model.markdown, fontSize: $model.fontSize)
-                PreviewView(markdown: $model.markdown, fontSize: $model.fontSize)
-            }
+            EditorView(text: $model.markdown, fontSize: $model.fontSize)
+            PreviewView(markdown: $model.markdown, fontSize: $model.fontSize)
         }
         .toolbar {
             ToolbarItemGroup(placement: .automatic) {
@@ -27,31 +21,6 @@ struct ContentView: View {
             }
         }
         .padding(6)
-    }
-
-    var sidebar: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Files")
-                    .font(.headline)
-                Spacer()
-            }
-
-            Button("Open…") { model.openFile() }
-            Button("Save") { model.saveFile() }
-            Button("Save As…") { model.saveFileAs() }
-            Divider()
-            Text("Recent")
-                .font(.subheadline)
-            List(model.recentFiles, id: \ .self) { url in
-                Button(action: { model.load(url: url) }) {
-                    Text(url.lastPathComponent)
-                        .lineLimit(1)
-                }
-            }
-            Spacer()
-        }
-        .padding(8)
     }
 }
 
