@@ -4,7 +4,9 @@ import AppKit
 import UniformTypeIdentifiers
 
 final class AppModel: ObservableObject {
-    @Published var markdown: String = "# Welcome to Markdown Reader\n\nOpen a file or start typing..."
+    private static let welcome = "# Welcome to Markdown Reader\n\nOpen a file or start typing..."
+    @Published var markdown: String = welcome
+    private var savedText = welcome
     @Published var currentFileURL: URL?
     @Published var fontSize: Double = 14
 
@@ -27,11 +29,13 @@ final class AppModel: ObservableObject {
     }
 
     func load(url: URL) {
+        guard confirmDiscard() else { return }
         do {
             let data = try Data(contentsOf: url)
             if let s = String(data: data, encoding: .utf8) {
                 DispatchQueue.main.async {
                     self.markdown = s
+                    self.savedText = s
                     self.currentFileURL = url
                 }
             }
@@ -68,9 +72,19 @@ final class AppModel: ObservableObject {
     private func write(url: URL) {
         do {
             try markdown.write(to: url, atomically: true, encoding: .utf8)
+            savedText = markdown
         } catch {
             self.showError(error)
         }
+    }
+
+    private func confirmDiscard() -> Bool {
+        guard markdown != savedText else { return true }
+        let alert = NSAlert()
+        alert.messageText = "Discard unsaved changes?"
+        alert.addButton(withTitle: "Discard")
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
     }
 
     func exportHTML() {

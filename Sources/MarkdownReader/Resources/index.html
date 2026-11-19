@@ -19,10 +19,22 @@
   const dark = matchMedia('(prefers-color-scheme: dark)').matches;
   mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: dark ? 'dark' : 'default' });
 
+  // In-page #anchors scroll as normal; every other link goes to Swift to open.
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a[href]');
+    if (!a || a.getAttribute('href').startsWith('#')) return;
+    e.preventDefault();
+    webkit.messageHandlers.link.postMessage(a.getAttribute('href'));
+  });
+
   async function render(md, size) {
     document.body.style.fontSize = size + 'px';
     // ponytail: marked does not sanitise raw HTML in the markdown; fine for a local reader, add DOMPurify if untrusted files matter
     document.body.innerHTML = marked.parse(md);
+    // GitHub-style heading ids so #section links have a target.
+    document.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(h => {
+      h.id = h.textContent.trim().toLowerCase().replace(/[^\w\- ]/g, '').replace(/ /g, '-');
+    });
     const blocks = document.querySelectorAll('pre > code.language-mermaid');
     const nodes = [];
     blocks.forEach(code => {
