@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, system-ui, sans-serif; padding: 8px; }
+  img { max-width: 100%; height: auto; }
+  pre { white-space: pre-wrap; }
+  .mermaid-error { color: crimson; }
+</style>
+<script src="marked.min.js"></script>
+<script src="mermaid.min.js"></script>
+</head>
+<body></body>
+<script>
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: dark ? 'dark' : 'default' });
+
+  async function render(md, size) {
+    document.body.style.fontSize = size + 'px';
+    // ponytail: marked does not sanitise raw HTML in the markdown; fine for a local reader, add DOMPurify if untrusted files matter
+    document.body.innerHTML = marked.parse(md);
+    const blocks = document.querySelectorAll('pre > code.language-mermaid');
+    const nodes = [];
+    blocks.forEach(code => {
+      const div = document.createElement('div');
+      div.className = 'mermaid';
+      div.textContent = code.textContent;
+      code.parentElement.replaceWith(div);
+      nodes.push(div);
+    });
+    // Run per diagram so one syntax error leaves the rest (and the raw block) intact.
+    for (const n of nodes) {
+      const src = n.textContent;
+      try {
+        await mermaid.run({ nodes: [n] });
+      } catch (e) {
+        n.className = 'mermaid-error';
+        n.innerHTML = '<pre></pre><div></div>';
+        n.firstChild.textContent = src;
+        n.lastChild.textContent = String(e && e.message || e);
+      }
+    }
+  }
+</script>
+</html>
