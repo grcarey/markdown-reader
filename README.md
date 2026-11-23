@@ -12,6 +12,7 @@ Features:
 - Mermaid diagrams in the preview
 - Links to other `.md` files open in the reader, with a Back button (Cmd+[) to return
 - Refresh (Cmd+R) reloads the file from disk, and a banner shows when another app has changed it
+- Drag a `.md` file from Finder onto the window or the Dock icon to open it
 
 Requirements:
 
@@ -51,7 +52,7 @@ Notes:
 
 Ideas:
 
-- Add drag & drop for files and folders
+- Open a dropped folder in a folder browser
 - Add folder browser and file tree
 - Add export to PDF and a nicer HTML template
 - Add preferences (theme / default font)
