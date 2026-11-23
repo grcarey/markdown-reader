@@ -74,7 +74,8 @@ while !done { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
 SWIFT
 
 # Add to the Dock once; re-running the script only refreshes the app.
-if ! defaults read com.apple.dock persistent-apps | grep -q "$name.app"; then
+# The Dock stores the path URL-encoded, so match on the encoded name.
+if ! defaults read com.apple.dock persistent-apps | grep -q "${name// /%20}.app"; then
   defaults write com.apple.dock persistent-apps -array-add \
     "<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>file://${app// /%20}/</string><key>_CFURLStringType</key><integer>15</integer></dict></dict></dict>"
   killall Dock
