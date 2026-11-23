@@ -12,9 +12,11 @@ final class AppModel: ObservableObject {
     @Published var history: [URL] = []
     @Published var changedOnDisk = false
     private var loadedModDate: Date?
-    // Scroll sync hooks: each pane registers its own setter (fraction 0...1). Plain closures, so no re-renders.
+    // Scroll sync hooks: each pane registers its own setter (pixel offset of the other pane). Plain closures, so no re-renders.
     var scrollEditor: ((Double) -> Void)?
     var scrollPreview: ((Double) -> Void)?
+    // Preview heading anchors from its last render: source line and page y of each heading, plus its max scroll.
+    var previewAnchors: (lines: [Int], ys: [Double], max: Double) = ([], [], 0)
 
     // ponytail: polls the open file's modification date every 2s; switch to a DispatchSource watcher if polling ever matters.
     init() {

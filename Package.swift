@@ -10,8 +10,11 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "MarkdownReader",
+            dependencies: ["ScrollMap"],
             path: "Sources/MarkdownReader",
             resources: [.copy("Resources")]
-        )
+        ),
+        .target(name: "ScrollMap"),
+        .testTarget(name: "ScrollMapTests", dependencies: ["ScrollMap"]),
     ]
 )
