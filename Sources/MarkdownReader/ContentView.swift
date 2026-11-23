@@ -59,11 +59,13 @@ struct ContentView: View {
         // The editor and preview take file drops themselves; this covers the rest of the window.
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             var urls = [URL?](repeating: nil, count: providers.count)
+            let lock = NSLock()  // callbacks arrive on arbitrary queues
             let group = DispatchGroup()
             for (i, p) in providers.enumerated() {
                 group.enter()
                 p.loadItem(forTypeIdentifier: UTType.fileURL.identifier) { item, _ in
-                    urls[i] = (item as? Data).flatMap { URL(dataRepresentation: $0, relativeTo: nil) }
+                    let url = (item as? Data).flatMap { URL(dataRepresentation: $0, relativeTo: nil) } ?? item as? URL
+                    lock.lock(); urls[i] = url; lock.unlock()
                     group.leave()
                 }
             }

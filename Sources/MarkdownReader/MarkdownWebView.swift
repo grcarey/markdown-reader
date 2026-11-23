@@ -18,7 +18,7 @@ struct MarkdownWebView: NSViewRepresentable {
             coordinator?.webView?.evaluateJavaScript("syncTo(\(y))")
         }
         // Load the template once; baseURL is the resources directory so the scripts load by relative src.
-        if let page = Bundle.module.url(forResource: "index", withExtension: "html", subdirectory: "Resources") {
+        if let page = Coordinator.template {
             web.loadFileURL(page, allowingReadAccessTo: page.deletingLastPathComponent())
         }
         return web
@@ -66,13 +66,16 @@ struct MarkdownWebView: NSViewRepresentable {
             if ready { flush() }
         }
 
-        // After the template loads, a navigation can only be a file dropped on the page: cancel it and open Markdown in the reader.
+        // Only the template (and its #anchors) may load. Any other navigation is a file dropped on the page: cancel it and open Markdown in the reader.
         func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
                      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-            if !ready { return decisionHandler(.allow) }
+            let url = action.request.url
+            if let url, url.path == Self.template?.path { return decisionHandler(.allow) }
             decisionHandler(.cancel)
-            if let url = action.request.url { model?.openDropped([url]) }
+            if let url { model?.openDropped([url]) }
         }
+
+        static let template = Bundle.module.url(forResource: "index", withExtension: "html", subdirectory: "Resources")
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             ready = true
