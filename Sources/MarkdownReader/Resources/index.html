@@ -53,6 +53,8 @@
     });
   }
   addEventListener('resize', postAnchors);
+  // Images and diagrams settle after render and move later headings, so re-post whenever the content's size changes.
+  new ResizeObserver(postAnchors).observe(document.body);
   addEventListener('scroll', () => {
     if (pending || Date.now() - lastSync < 150) return;
     pending = true;
