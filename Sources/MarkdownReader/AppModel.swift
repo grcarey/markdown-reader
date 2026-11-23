@@ -10,6 +10,27 @@ final class AppModel: ObservableObject {
     @Published var currentFileURL: URL?
     @Published var fontSize: Double = 14
     @Published var history: [URL] = []
+    @Published var changedOnDisk = false
+    private var loadedModDate: Date?
+
+    // ponytail: polls the open file's modification date every 2s; switch to a DispatchSource watcher if polling ever matters.
+    init() {
+        Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.checkDisk() }
+    }
+
+    private func modDate(_ url: URL) -> Date? {
+        try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+    }
+
+    private func markInSync(_ url: URL) {
+        loadedModDate = modDate(url)
+        changedOnDisk = false
+    }
+
+    private func checkDisk() {
+        guard !changedOnDisk, let url = currentFileURL, let date = modDate(url) else { return }
+        if let loaded = loadedModDate, date > loaded { changedOnDisk = true }
+    }
 
     // Open a markdown file using NSOpenPanel
     func openFile() {
@@ -60,6 +81,7 @@ final class AppModel: ObservableObject {
             markdown = s
             savedText = s
             currentFileURL = url
+            markInSync(url)
             return true
         } catch {
             self.showError(error)
@@ -96,6 +118,7 @@ final class AppModel: ObservableObject {
         do {
             try markdown.write(to: url, atomically: true, encoding: .utf8)
             savedText = markdown
+            markInSync(url)
         } catch {
             self.showError(error)
         }
