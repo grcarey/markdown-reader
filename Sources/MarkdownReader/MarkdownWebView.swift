@@ -9,9 +9,13 @@ struct MarkdownWebView: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.userContentController.add(context.coordinator, name: "link")
+        config.userContentController.add(context.coordinator, name: "scroll")
         let web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = context.coordinator
         context.coordinator.webView = web
+        model.scrollPreview = { [weak coordinator = context.coordinator] f in
+            coordinator?.webView?.evaluateJavaScript("syncTo(\(f))")
+        }
         // Load the template once; baseURL is the resources directory so the scripts load by relative src.
         if let page = Bundle.module.url(forResource: "index", withExtension: "html", subdirectory: "Resources") {
             web.loadFileURL(page, allowingReadAccessTo: page.deletingLastPathComponent())
@@ -30,8 +34,12 @@ struct MarkdownWebView: NSViewRepresentable {
         weak var webView: WKWebView?
         weak var model: AppModel?
 
-        // Links resolve against the open file: .md files open here, everything else in its default app.
+        // "scroll" carries the preview's scroll fraction. Links resolve against the open file: .md files open here, everything else in its default app.
         func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+            if message.name == "scroll" {
+                if let f = message.body as? Double { model?.scrollEditor?(f) }
+                return
+            }
             guard let href = message.body as? String,
                   let url = URL(string: href, relativeTo: model?.currentFileURL)?.absoluteURL else { return }
             if url.isFileURL, ["md", "markdown"].contains(url.pathExtension.lowercased()) {
