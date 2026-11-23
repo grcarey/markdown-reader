@@ -23,6 +23,14 @@ Run from terminal (quick):
 swift run
 ```
 
+Install as an app (in /Applications and on the Dock, and set as the default for `.md` files):
+
+```bash
+scripts/install-app.sh
+```
+
+Re-run it after changes. The version comes from `VERSION`; the build number is the commit count.
+
 Notes:
 - The preview is a `WKWebView` using bundled `marked` and `mermaid` (works offline). Mermaid code blocks render as diagrams.
 
