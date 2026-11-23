@@ -50,7 +50,7 @@ struct MarkdownWebView: NSViewRepresentable {
             }
             guard let href = message.body as? String,
                   let url = URL(string: href, relativeTo: model?.currentFileURL)?.absoluteURL else { return }
-            if url.isFileURL, ["md", "markdown"].contains(url.pathExtension.lowercased()) {
+            if AppModel.isMarkdown(url) {
                 model?.follow(url: url)
             } else {
                 NSWorkspace.shared.open(url)
@@ -64,6 +64,14 @@ struct MarkdownWebView: NSViewRepresentable {
             self.markdown = markdown
             self.fontSize = fontSize
             if ready { flush() }
+        }
+
+        // After the template loads, a navigation can only be a file dropped on the page: cancel it and open Markdown in the reader.
+        func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
+                     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            if !ready { return decisionHandler(.allow) }
+            decisionHandler(.cancel)
+            if let url = action.request.url { model?.openDropped([url]) }
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
