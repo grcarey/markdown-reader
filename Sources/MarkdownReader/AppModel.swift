@@ -25,9 +25,13 @@ final class AppModel: ObservableObject {
         panel.canChooseDirectories = false
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
-            // Opening a file directly starts a new link chain.
-            if self.load(url: url) { self.history.removeAll() }
+            self.open(url: url)
         }
+    }
+
+    // Opening a file directly starts a new link chain.
+    func open(url: URL) {
+        if load(url: url) { history.removeAll() }
     }
 
     // Follow a link from the current file, remembering where we came from.
