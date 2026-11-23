@@ -2,11 +2,17 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var model: AppModel
+    @AppStorage("viewMode") private var viewMode = "both"
 
+    // A hidden pane is torn down; its scroll closure captures the coordinator weakly, so it becomes a no-op.
     var body: some View {
         HSplitView {
-            EditorView(text: $model.markdown, fontSize: $model.fontSize)
-            PreviewView(markdown: $model.markdown, fontSize: $model.fontSize)
+            if viewMode != "preview" {
+                EditorView(text: $model.markdown, fontSize: $model.fontSize)
+            }
+            if viewMode != "editor" {
+                PreviewView(markdown: $model.markdown, fontSize: $model.fontSize)
+            }
         }
         .safeAreaInset(edge: .top) {
             if model.changedOnDisk {
@@ -32,6 +38,15 @@ struct ContentView: View {
                     .help("Reload the file from disk")
                     .keyboardShortcut("r")
                     .disabled(model.currentFileURL == nil)
+            }
+            ToolbarItem(placement: .automatic) {
+                Picker("View", selection: $viewMode) {
+                    Label("Editor", systemImage: "doc.plaintext").tag("editor")
+                    Label("Preview", systemImage: "doc.richtext").tag("preview")
+                    Label("Both", systemImage: "rectangle.split.2x1").tag("both")
+                }
+                .pickerStyle(.segmented)
+                .help("Show the editor, the preview or both")
             }
             ToolbarItemGroup(placement: .automatic) {
                 Text("Font")
