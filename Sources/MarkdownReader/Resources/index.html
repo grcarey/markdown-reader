@@ -27,20 +27,38 @@
     webkit.messageHandlers.link.postMessage(a.getAttribute('href'));
   });
 
-  // Scroll sync with the editor: fraction of the scrollable height. Events within 150 ms of our own scroll are ignored.
-  let lastSync = 0, pending = false;
+  // Scroll sync with the editor, in pixels (Swift maps between the panes by heading). Events within 150 ms of our own scroll are ignored.
+  let lastSync = 0, pending = false, source = '';
   const maxY = () => document.documentElement.scrollHeight - innerHeight;
-  function syncTo(f) {
+  function syncTo(y) {
     lastSync = Date.now();
-    scrollTo(0, f * Math.max(maxY(), 0));
+    scrollTo(0, y);
   }
+
+  // Heading anchors for Swift: source line (from marked's own tokens) and page y of each heading, paired in order.
+  // ponytail: top-level headings only; ones nested in lists or blockquotes are ignored. A count mismatch (raw HTML headings) sends none, so sync falls back to proportional.
+  function postAnchors() {
+    const lines = [];
+    let line = 0;
+    for (const t of marked.lexer(source)) {
+      if (t.type === 'heading') lines.push(line);
+      line += (t.raw.match(/\n/g) || []).length;
+    }
+    const hs = [...document.body.children].filter(e => /^H[1-6]$/.test(e.tagName));
+    const ok = hs.length === lines.length;
+    webkit.messageHandlers.anchors.postMessage({
+      lines: ok ? lines : [],
+      ys: ok ? hs.map(h => h.getBoundingClientRect().top + scrollY) : [],
+      max: Math.max(maxY(), 0)
+    });
+  }
+  addEventListener('resize', postAnchors);
   addEventListener('scroll', () => {
     if (pending || Date.now() - lastSync < 150) return;
     pending = true;
     requestAnimationFrame(() => {
       pending = false;
-      const m = maxY();
-      webkit.messageHandlers.scroll.postMessage(m > 0 ? Math.min(Math.max(scrollY / m, 0), 1) : 0);
+      webkit.messageHandlers.scroll.postMessage(Math.min(Math.max(scrollY, 0), Math.max(maxY(), 0)));
     });
   });
 
@@ -48,6 +66,7 @@
     // Replacing the body collapses the page, so put the scroll position back afterwards.
     const y = scrollY;
     const restore = () => { lastSync = Date.now(); scrollTo(0, y); };
+    source = md;
     document.body.style.fontSize = size + 'px';
     // ponytail: marked does not sanitise raw HTML in the markdown; fine for a local reader, add DOMPurify if untrusted files matter
     document.body.innerHTML = marked.parse(md);
@@ -78,6 +97,7 @@
       }
     }
     restore();
+    postAnchors();
   }
 </script>
 </html>

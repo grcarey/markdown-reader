@@ -10,11 +10,12 @@ struct MarkdownWebView: NSViewRepresentable {
         let config = WKWebViewConfiguration()
         config.userContentController.add(context.coordinator, name: "link")
         config.userContentController.add(context.coordinator, name: "scroll")
+        config.userContentController.add(context.coordinator, name: "anchors")
         let web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = context.coordinator
         context.coordinator.webView = web
-        model.scrollPreview = { [weak coordinator = context.coordinator] f in
-            coordinator?.webView?.evaluateJavaScript("syncTo(\(f))")
+        model.scrollPreview = { [weak coordinator = context.coordinator] y in
+            coordinator?.webView?.evaluateJavaScript("syncTo(\(y))")
         }
         // Load the template once; baseURL is the resources directory so the scripts load by relative src.
         if let page = Bundle.module.url(forResource: "index", withExtension: "html", subdirectory: "Resources") {
@@ -34,10 +35,17 @@ struct MarkdownWebView: NSViewRepresentable {
         weak var webView: WKWebView?
         weak var model: AppModel?
 
-        // "scroll" carries the preview's scroll fraction. Links resolve against the open file: .md files open here, everything else in its default app.
+        // "scroll" carries the preview's scroll offset in pixels, "anchors" its heading positions. Links resolve against the open file: .md files open here, everything else in its default app.
         func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
             if message.name == "scroll" {
-                if let f = message.body as? Double { model?.scrollEditor?(f) }
+                if let y = message.body as? Double { model?.scrollEditor?(y) }
+                return
+            }
+            if message.name == "anchors" {
+                if let d = message.body as? [String: Any], let lines = d["lines"] as? [Int],
+                   let ys = d["ys"] as? [Double], let max = d["max"] as? Double {
+                    model?.previewAnchors = (lines, ys, max)
+                }
                 return
             }
             guard let href = message.body as? String,

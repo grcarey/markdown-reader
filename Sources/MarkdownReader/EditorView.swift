@@ -1,4 +1,5 @@
 import SwiftUI
+import ScrollMap
 
 struct EditorView: View {
     @Binding var text: String
@@ -21,7 +22,8 @@ struct EditorView: View {
 }
 
 // NSTextView in place of TextEditor so the scroll position is reachable for syncing with the preview.
-// ponytail: proportional sync (scroll fraction); long diagrams or images skew the mapping, heading-anchored sync is the upgrade.
+// ponytail: heading-anchored sync, top-level headings only (none in lists or quotes), laid out on demand at every scroll event;
+// very large files may need cached anchor offsets, invalidated on text, font or width change.
 struct SyncedTextEditor: NSViewRepresentable {
     @Binding var text: String
     var fontSize: Double
@@ -71,20 +73,41 @@ struct SyncedTextEditor: NSViewRepresentable {
             parent.text = tv.string
         }
 
-        // Scrolls set by the other pane are ignored for 150 ms (a timestamp, as a no-op scroll fires no event).
-        @objc func scrolled() {
-            guard Date().timeIntervalSince(lastProgrammatic) > 0.15, let scroll,
-                  let doc = scroll.documentView else { return }
-            let range = doc.frame.height - scroll.contentView.bounds.height
-            let f = range > 0 ? scroll.contentView.bounds.origin.y / range : 0
-            parent.model.scrollPreview?(min(max(Double(f), 0), 1))
+        // Matching (editor y, preview y) breakpoints: each preview heading's source line laid out in the text view.
+        private func breakpoints(_ scroll: NSScrollView) -> (editor: [Double], preview: [Double], max: Double)? {
+            guard let tv = scroll.documentView as? NSTextView, let lm = tv.layoutManager, let tc = tv.textContainer else { return nil }
+            let a = parent.model.previewAnchors
+            let ns = tv.string as NSString
+            var ys: [Double] = [], line = 0, idx = 0
+            for target in a.lines {
+                while line < target {
+                    let r = ns.range(of: "\n", range: NSRange(location: idx, length: ns.length - idx))
+                    if r.location == NSNotFound { break }
+                    idx = r.upperBound
+                    line += 1
+                }
+                let chars = NSRange(location: min(idx, max(ns.length - 1, 0)), length: min(1, ns.length))
+                lm.ensureLayout(forCharacterRange: chars)
+                let g = lm.glyphRange(forCharacterRange: chars, actualCharacterRange: nil)
+                ys.append(Double(lm.boundingRect(forGlyphRange: g, in: tc).minY + tv.textContainerOrigin.y))
+            }
+            let emax = Double(max(tv.frame.height - scroll.contentView.bounds.height, 0))
+            let b = scrollBreakpoints(editor: ys, preview: a.ys, editorMax: emax, previewMax: a.max)
+            return (b.editor, b.preview, emax)
         }
 
-        func scrollTo(_ f: Double) {
-            guard let scroll, let doc = scroll.documentView else { return }
+        // Scrolls set by the other pane are ignored for 150 ms (a timestamp, as a no-op scroll fires no event).
+        @objc func scrolled() {
+            guard Date().timeIntervalSince(lastProgrammatic) > 0.15, let scroll, let b = breakpoints(scroll) else { return }
+            let y = Double(scroll.contentView.bounds.origin.y)
+            parent.model.scrollPreview?(mapScroll(y, from: b.editor, to: b.preview))
+        }
+
+        func scrollTo(_ previewY: Double) {
+            guard let scroll, let b = breakpoints(scroll) else { return }
             lastProgrammatic = Date()
-            let range = max(doc.frame.height - scroll.contentView.bounds.height, 0)
-            scroll.contentView.scroll(to: NSPoint(x: 0, y: CGFloat(f) * range))
+            let y = mapScroll(previewY, from: b.preview, to: b.editor)
+            scroll.contentView.scroll(to: NSPoint(x: 0, y: CGFloat(y)))
             scroll.reflectScrolledClipView(scroll.contentView)
         }
     }
