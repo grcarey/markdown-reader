@@ -15,6 +15,12 @@ struct ContentView: View {
                     .keyboardShortcut("[")
                     .disabled(model.history.isEmpty)
             }
+            ToolbarItem(placement: .navigation) {
+                Button(action: { model.reload() }) { Label("Refresh", systemImage: "arrow.clockwise") }
+                    .help("Reload the file from disk")
+                    .keyboardShortcut("r")
+                    .disabled(model.currentFileURL == nil)
+            }
             ToolbarItemGroup(placement: .automatic) {
                 Text("Font")
                 Slider(value: $model.fontSize, in: 10...30)

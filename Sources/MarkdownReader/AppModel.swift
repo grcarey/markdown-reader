@@ -40,6 +40,12 @@ final class AppModel: ObservableObject {
         if load(url: url), let from { history.append(from) }
     }
 
+    // Re-read the current file from disk, keeping the Back history.
+    func reload() {
+        guard let url = currentFileURL else { return }
+        load(url: url)
+    }
+
     func goBack() {
         guard let previous = history.last, load(url: previous) else { return }
         history.removeLast()
