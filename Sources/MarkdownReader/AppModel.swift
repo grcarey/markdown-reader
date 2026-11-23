@@ -55,6 +55,18 @@ final class AppModel: ObservableObject {
         }
     }
 
+    static func isMarkdown(_ url: URL) -> Bool {
+        url.isFileURL && ["md", "markdown"].contains(url.pathExtension.lowercased())
+    }
+
+    // Files dropped on the window open like File > Open: the first Markdown one, the rest ignored.
+    @discardableResult
+    func openDropped(_ urls: [URL]) -> Bool {
+        guard let url = urls.first(where: Self.isMarkdown) else { return false }
+        open(url: url)
+        return true
+    }
+
     // Opening a file directly starts a new link chain.
     func open(url: URL) {
         if load(url: url) { history.removeAll() }

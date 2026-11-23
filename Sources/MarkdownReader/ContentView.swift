@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     @EnvironmentObject var model: AppModel
@@ -55,6 +56,22 @@ struct ContentView: View {
             }
         }
         .padding(6)
+        // The editor and preview take file drops themselves; this covers the rest of the window.
+        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+            var urls = [URL?](repeating: nil, count: providers.count)
+            let lock = NSLock()  // callbacks arrive on arbitrary queues
+            let group = DispatchGroup()
+            for (i, p) in providers.enumerated() {
+                group.enter()
+                p.loadItem(forTypeIdentifier: UTType.fileURL.identifier) { item, _ in
+                    let url = (item as? Data).flatMap { URL(dataRepresentation: $0, relativeTo: nil) } ?? item as? URL
+                    lock.lock(); urls[i] = url; lock.unlock()
+                    group.leave()
+                }
+            }
+            group.notify(queue: .main) { model.openDropped(urls.compactMap { $0 }) }
+            return true
+        }
     }
 }
 

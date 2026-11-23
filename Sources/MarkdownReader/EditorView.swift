@@ -21,6 +21,32 @@ struct EditorView: View {
     }
 }
 
+// NSTextView inserts a dropped file's path; take Markdown files for the reader and ignore other files. Text drops pass through.
+final class DropTextView: NSTextView {
+    var onDropMarkdown: (([URL]) -> Bool)?
+
+    private func files(_ info: NSDraggingInfo) -> [URL]? {
+        let urls = info.draggingPasteboard.readObjects(forClasses: [NSURL.self],
+                                                       options: [.urlReadingFileURLsOnly: true]) as? [URL]
+        return urls?.isEmpty == false ? urls : nil
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard let urls = files(sender) else { return super.draggingEntered(sender) }
+        return urls.contains(where: AppModel.isMarkdown) ? .copy : []
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard let urls = files(sender) else { return super.draggingUpdated(sender) }
+        return urls.contains(where: AppModel.isMarkdown) ? .copy : []
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        guard let urls = files(sender) else { return super.performDragOperation(sender) }
+        return onDropMarkdown?(urls) ?? false
+    }
+}
+
 // NSTextView in place of TextEditor so the scroll position is reachable for syncing with the preview.
 // ponytail: heading-anchored sync, top-level headings only (none in lists or quotes), laid out on demand at every scroll event;
 // very large files may need cached anchor offsets, invalidated on text, font or width change.
@@ -30,8 +56,18 @@ struct SyncedTextEditor: NSViewRepresentable {
     let model: AppModel
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scroll = NSTextView.scrollableTextView()
-        let tv = scroll.documentView as! NSTextView
+        // Built by hand, as NSTextView.scrollableTextView() returns a plain NSTextView; matches its setup.
+        let scroll = NSScrollView()
+        scroll.hasVerticalScroller = true
+        let tv = DropTextView(frame: NSRect(origin: .zero, size: scroll.contentSize))
+        tv.minSize = NSSize(width: 0, height: scroll.contentSize.height)
+        tv.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        tv.isVerticallyResizable = true
+        tv.autoresizingMask = .width
+        tv.textContainer?.widthTracksTextView = true
+        tv.textContainer?.containerSize = NSSize(width: scroll.contentSize.width, height: CGFloat.greatestFiniteMagnitude)
+        tv.onDropMarkdown = { [weak model] in model?.openDropped($0) ?? false }
+        scroll.documentView = tv
         tv.delegate = context.coordinator
         tv.isRichText = false
         tv.allowsUndo = true
