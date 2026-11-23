@@ -50,7 +50,9 @@ struct SyncedTextEditor: NSViewRepresentable {
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         context.coordinator.parent = self
         let tv = scroll.documentView as! NSTextView
-        tv.font = .monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
+        // Only on a size change: re-applying the font on every keystroke restyles the whole text.
+        let font = NSFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
+        if tv.font != font { tv.font = font }
         // Only set when it differs, so typing keeps the cursor and scroll position.
         if tv.string != text { tv.string = text }
     }

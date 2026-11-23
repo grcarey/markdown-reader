@@ -81,6 +81,8 @@ final class AppModel: ObservableObject {
         do {
             let data = try Data(contentsOf: url)
             guard let s = String(data: data, encoding: .utf8) else { return false }
+            // A different file starts at the top; a refresh keeps the reader's place.
+            if url != currentFileURL { scrollEditor?(0); scrollPreview?(0) }
             markdown = s
             savedText = s
             currentFileURL = url
